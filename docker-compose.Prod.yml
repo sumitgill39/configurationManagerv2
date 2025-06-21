@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Production Backend Configuration
+  backend:
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://config_user:config_password@postgres:5432/config_manager
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-production-jwt-secret-change-me}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      - PORT=5000
+    volumes:
+      - uploads_data:/app/uploads
+
+  # Production Frontend Configuration
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        - REACT_APP_API_BASE=${REACT_APP_API_BASE:-http://localhost:5000/api}
+    environment:
+      - NODE_ENV=production
+    volumes: []
+
+  # Nginx Reverse Proxy for Production
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - config_network
+    restart: unless-stopped
